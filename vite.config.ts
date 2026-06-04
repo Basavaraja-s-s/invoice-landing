@@ -12,6 +12,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  nitro: {
+    preset: "vercel",
+  },
   cacheDir: "node_modules/.vite",
   optimizeDeps: {
     include: [
@@ -24,3 +27,4 @@ export default defineConfig({
     ]
   }
 });
+

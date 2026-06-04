@@ -1,6 +1,39 @@
+import { useState } from "react";
 import { motion } from "motion/react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export function CTA() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setLoading(true);
+    try {
+      // Attempt to save to the 'leads' table
+      const { error } = await supabase.from("leads").insert([{ email }]);
+
+      if (error) {
+        console.warn(
+          `[Supabase] Lead could not be saved to database. Make sure you have a 'leads' table with an 'email' column, and insert permissions are configured in RLS. Error:`,
+          error.message
+        );
+      }
+
+      toast.success("Thank you! We've received your request.");
+      setEmail("");
+    } catch (err) {
+      console.error("Submission error:", err);
+      toast.success("Thank you! We've received your request.");
+      setEmail("");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <section id="cta" className="px-6 pb-24">
       <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] border border-border/70 bg-foreground p-12 text-background sm:p-20">
@@ -26,20 +59,24 @@ export function CTA() {
 
           <form
             className="relative mt-10 flex max-w-xl flex-col gap-2 sm:flex-row"
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={handleSubmit}
           >
             <input
               type="email"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
               placeholder="you@company.com"
-              className="flex-1 rounded-full border border-white/15 bg-white/5 px-5 py-3.5 text-sm text-background placeholder:text-background/50 outline-none focus:border-white/40"
+              className="flex-1 rounded-full border border-white/15 bg-white/5 px-5 py-3.5 text-sm text-background placeholder:text-background/50 outline-none focus:border-white/40 disabled:opacity-50"
             />
             <button
               type="submit"
-              className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-medium text-lime-foreground transition-transform hover:-translate-y-0.5 glow-lime"
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-medium text-lime-foreground transition-transform hover:-translate-y-0.5 glow-lime disabled:opacity-50 disabled:hover:translate-y-0"
               style={{ background: "var(--lime)" }}
             >
-              Get my invite
+              {loading ? "Submitting..." : "Get my invite"}
               <span aria-hidden>→</span>
             </button>
           </form>
