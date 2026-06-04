@@ -12,4 +12,15 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  cacheDir: "node_modules/.vite",
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "@tanstack/react-query",
+      "@tanstack/react-router",
+      "@tanstack/react-start",
+      "@tanstack/router-plugin"
+    ]
+  }
 });
