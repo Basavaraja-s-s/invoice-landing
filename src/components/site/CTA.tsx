@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { sendInvite } from "@/lib/api/invite.functions";
 
 export function CTA() {
   const [email, setEmail] = useState("");
@@ -13,18 +14,37 @@ export function CTA() {
 
     setLoading(true);
     try {
-      // Attempt to save to the 'leads' table
-      const { error } = await supabase.from("leads").insert([{ email }]);
-
-      if (error) {
-        console.warn(
-          `[Supabase] Lead could not be saved to database. Make sure you have a 'leads' table with an 'email' column, and insert permissions are configured in RLS. Error:`,
-          error.message
-        );
+      // 1. Try to save to database client-side first (in case it exists)
+      const { error: dbError } = await supabase.from("leads").insert([{ email }]);
+      if (dbError) {
+        console.warn("[Supabase] Failed to save lead client-side:", dbError.message);
       }
 
-      toast.success("Thank you! We've received your request.");
-      setEmail("");
+      // 2. Call our server function to send the email via Resend
+      const result = await sendInvite({ data: { email, origin: window.location.origin } });
+
+      if (result.success && result.method === "resend") {
+        toast.success("Invitation sent successfully! Check your inbox.");
+        setEmail("");
+      } else {
+        // Fallback to Supabase Auth OTP email if Resend is not configured
+        console.info("[Email] Resend API key not found. Falling back to Supabase Auth OTP email.");
+        
+        const { error: otpError } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo: window.location.origin,
+          }
+        });
+
+        if (otpError) {
+          console.error("[Supabase Auth] Magic link error:", otpError.message);
+          toast.success("Thank you! We've received your request.");
+        } else {
+          toast.success("Invitation link sent via Supabase! Check your inbox.");
+        }
+        setEmail("");
+      }
     } catch (err) {
       console.error("Submission error:", err);
       toast.success("Thank you! We've received your request.");
